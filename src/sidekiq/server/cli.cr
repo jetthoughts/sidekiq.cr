@@ -8,7 +8,7 @@ module Sidekiq
     getter logger : ::Logger
 
     def initialize(args = ARGV)
-      @concurrency = 25
+      @concurrency = 1000
       @queues = [] of String
       @timeout = 8
       @environment = "development"

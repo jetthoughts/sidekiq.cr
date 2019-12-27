@@ -7,7 +7,7 @@
 #
 # Requirements:
 #  - Redis running on localhost:6379
-#  - `gem install sidekiq`
+#  - `gem install sidekiq hiredis redis`
 #
 
 puts RUBY_DESCRIPTION
@@ -18,17 +18,23 @@ require 'sidekiq/launcher'
 include Sidekiq::Util
 
 Sidekiq.configure_server do |config|
-  config.redis = { driver: :hiredis, db: 13, port: 6379 }
   #config.redis = { db: 13, port: 6379 }
   config.options[:queues] << 'default'
+  config.options[:concurrency] = 500
+  config.redis = { driver: :hiredis, db: '10', port: '6379', size: 502 }
   config.logger.level = Logger::WARN
   config.average_scheduled_poll_interval = 2
 end
 
+
+require 'net/http'
 class LoadWorker
   include Sidekiq::Worker
 
   def perform(idx)
+    # 1000.times { 1 + 1 }
+    # sleep 0.1
+    Net::HTTP.get(['example.com', 'www.jetthoughts.com'].sample, '/')
   end
 end
 
@@ -62,7 +68,7 @@ def Process.rss
 end
 
 iter = 10
-count = 10_000
+count = 10_00
 
 iter.times do
   arr = Array.new(count) do

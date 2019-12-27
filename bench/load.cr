@@ -4,6 +4,8 @@ require "colorize"
 require "redis"
 require "../src/sidekiq/server/cli"
 
+require "http/client"
+
 # This benchmark is an integration test which creates and
 # executes 100,000 no-op jobs through Sidekiq.  This is
 # useful for determining job overhead and raw throughput
@@ -24,7 +26,7 @@ r.flushdb
 devnull = ::Logger.new(File.open("/dev/null", "w"))
 devnull.formatter = Sidekiq::Logger::PRETTY
 devnull.level = ::Logger::INFO
-s = Sidekiq::CLI.new
+s = Sidekiq::CLI.new(["-c", "500"])
 x = s.configure(devnull) do |config|
   # nothing
 end
@@ -33,6 +35,9 @@ class LoadWorker
   include Sidekiq::Worker
 
   def perform(idx : Int64)
+    # 1000.times { 1 + 1}
+    # sleep 0.1
+    HTTP::Client.get ["http://www.example.com", "http://www.jetthoughts.com"].sample
   end
 end
 
@@ -41,7 +46,7 @@ def Process.rss
 end
 
 iter = 10
-count = 10_000_i64
+count = 10_00_i64
 total = iter * count
 
 a = Time.now

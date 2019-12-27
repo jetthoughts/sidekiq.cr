@@ -1,4 +1,5 @@
 require "./fetch"
+require "./consumer"
 require "./processor"
 require "./scheduled"
 require "./middleware"
@@ -8,7 +9,10 @@ module Sidekiq
   class Server < Sidekiq::Context
     getter environment : String
     getter concurrency : Int32
-    getter fetcher : Sidekiq::Fetch
+    
+    # getter fetcher : Sidekiq::Fetch
+    getter fetcher : Sidekiq::Consumer
+    
     getter scheduler : Sidekiq::Scheduled::Poller
     getter pool : Sidekiq::Pool
     getter server_middleware : Sidekiq::Middleware::Chain(Sidekiq::Middleware::ServerEntry)
@@ -37,10 +41,16 @@ module Sidekiq
       @error_handlers = [] of Sidekiq::ExceptionHandler::Base
       @error_handlers << Sidekiq::ExceptionHandler::Logger.new(@logger)
 
-      @pool = Sidekiq::Pool.new(@concurrency + 2)
       @processors = [] of Sidekiq::Processor
       @scheduler = Sidekiq::Scheduled::Poller.new
-      @fetcher = Sidekiq::BasicFetch.new(@queues)
+
+      puts "Concurrency: #{@concurrency}"
+      # @pool = Sidekiq::Pool.new(@concurrency + 2)
+      @pool = Sidekiq::Pool.new(20)
+
+      # @fetcher = Sidekiq::BasicFetch.new(@queues)
+      @fetcher = Sidekiq::Consumer.new(Sidekiq::BasicFetch.new(@queues))
+      
       @heartbeat = Sidekiq::Heartbeat.new
     end
 
@@ -58,6 +68,8 @@ module Sidekiq
     end
 
     def start
+      @fetcher.start(self)
+
       validate
       concurrency.times do
         p = Sidekiq::Processor.new(self)
